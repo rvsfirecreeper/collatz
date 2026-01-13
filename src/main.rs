@@ -18,6 +18,7 @@ fn main() {
     let mut record = CollatzResult { seed: 0, steps: 0 };
     let mut input = String::new();
     let min = loop {
+        input.clear();
         print!("What is the first number you would like to calculate? ");
         flush!();
         match stdin.read_line(&mut input) {
@@ -32,15 +33,16 @@ fn main() {
         }
     };
     let max = loop {
+        input.clear();
         print!("What is the last number you would like to calculate? ");
         flush!();
         match stdin.read_line(&mut input) {
             Ok(_) => match input.trim().parse::<u64>() {
                 Ok(n) => break n,
-                Err(_) => eprintln!(
+                Err(e) => eprintln!(
                     "Not a number. Note: numbers above
                     18,446,744,073,709,551,616
-                     are not supported"
+                     are not supported. Error: {e}"
                 ),
             },
             Err(e) => eprintln!("Something went wrong! Error: {e}"),

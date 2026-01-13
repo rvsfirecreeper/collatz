@@ -60,5 +60,8 @@ fn main() {
             record = current;
         }
     }
-    println!("Calculations took just {}", start.elapsed().as_secs_f64());
+    println!(
+        "Calculations took {} seconds!",
+        start.elapsed().as_secs_f64()
+    );
 }

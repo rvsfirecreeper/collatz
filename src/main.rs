@@ -38,7 +38,13 @@ fn main() {
         flush!();
         match stdin.read_line(&mut input) {
             Ok(_) => match input.trim().parse::<u64>() {
-                Ok(n) => break n,
+                Ok(n) => {
+                    if n < min {
+                        eprintln!("Must be more or equal to first number")
+                    } else {
+                        break n;
+                    }
+                }
                 Err(e) => eprintln!(
                     "Not a number. Note: numbers above
                     18,446,744,073,709,551,616

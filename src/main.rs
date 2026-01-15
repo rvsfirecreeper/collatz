@@ -3,6 +3,10 @@ use collatz::CollatzResult;
 use collatz::collatz;
 use std::io;
 use std::io::Write;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Instant;
 macro_rules! flush {
     () => {
@@ -56,8 +60,24 @@ fn main() {
     };
     println!("Starting Collatz Calculations...");
     let start = Instant::now();
+    let (tjob, rjob) = mpsc::channel();
+    let rjob = Arc::new(Mutex::new(rjob));
+    let (tresult, rresult) = mpsc::channel();
+    for _ in 1..=8 {
+        let tresult = tresult.clone();
+        let rjob = Arc::clone(&rjob);
+        thread::spawn(move || {
+            while let Ok(job) = rjob.lock().unwrap().recv() {
+                tresult.send(collatz(&job)).unwrap();
+            }
+        });
+    }
     for i in min..=max {
-        let current = collatz(&i);
+        tjob.send(i).unwrap();
+    }
+    drop(tjob);
+    for _ in min..=max {
+        let current = rresult.recv().unwrap();
         if current.steps > record.steps {
             println!(
                 "A new record! {} broke the record for most steps with {} steps!",

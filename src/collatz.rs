@@ -6,15 +6,12 @@ pub fn collatz(seed: &u64) -> CollatzResult {
     let mut current = *seed;
     let mut steps: u64 = 0;
     while current != 1 {
-        if current % 2 == 0 {
+        if current.is_multiple_of(2) {
             current >>= 1
         } else {
             current = current * 3 + 1
         }
         steps += 1;
     }
-    CollatzResult {
-        seed: *seed,
-        steps: steps,
-    }
+    CollatzResult { seed: *seed, steps }
 }

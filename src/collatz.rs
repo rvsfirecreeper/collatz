@@ -1,3 +1,4 @@
+#[derive(Copy, Clone)]
 pub struct CollatzResult {
     pub seed: u64,
     pub steps: u64,

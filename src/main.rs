@@ -12,6 +12,7 @@ macro_rules! flush {
     };
 }
 const NUM_THREADS: u64 = 8;
+const BATCH_SIZE: u64 = 1024;
 fn main() {
     print!(
         "The Collatz Conjecture: Records!!\n\
@@ -63,9 +64,33 @@ fn main() {
     for i in 0..NUM_THREADS {
         let tresult = tresult.clone();
         thread::spawn(move || {
-            for num in min..=max {
-                if num % NUM_THREADS == i {
-                    tresult.send(collatz(&num)).unwrap();
+            let mut batch =
+                vec![CollatzResult { seed: 0, steps: 0 }; BATCH_SIZE.try_into().unwrap()];
+            for (j, num) in (0_u64..).zip(((min + i)..=max).step_by(NUM_THREADS as usize)) {
+                if j.is_multiple_of(BATCH_SIZE) && j != 0 {
+                    for res in &batch {
+                        match tresult.send(*res) {
+                            Ok(()) => (),
+                            Err(e) => {
+                                eprintln!("{e}");
+                                panic!("Bad Send");
+                            }
+                        };
+                    }
+                }
+                batch[(j % BATCH_SIZE) as usize] = collatz(&num);
+            }
+            for res in batch {
+                if res.steps == 0 {
+                    break;
+                } else {
+                    match tresult.send(res) {
+                        Ok(()) => (),
+                        Err(e) => {
+                            eprintln!("{e}");
+                            panic!("Bad Send");
+                        }
+                    };
                 }
             }
         });

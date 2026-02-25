@@ -12,7 +12,7 @@ macro_rules! flush {
     };
 }
 const NUM_THREADS: u64 = 8;
-const BATCH_SIZE: u64 = 1024;
+const BATCH_SIZE: u64 = 1024 * 1024;
 fn main() {
     print!(
         "The Collatz Conjecture: Records!!\n\
@@ -64,27 +64,12 @@ fn main() {
     for i in 0..NUM_THREADS {
         let tresult = tresult.clone();
         thread::spawn(move || {
-            let mut batch =
-                vec![CollatzResult { seed: 0, steps: 0 }; BATCH_SIZE.try_into().unwrap()];
-            for (j, num) in (0_u64..).zip(((min + i)..=max).step_by(NUM_THREADS as usize)) {
-                if j.is_multiple_of(BATCH_SIZE) && j != 0 {
-                    for res in &batch {
-                        match tresult.send(*res) {
-                            Ok(()) => (),
-                            Err(e) => {
-                                eprintln!("{e}");
-                                panic!("Bad Send");
-                            }
-                        };
-                    }
-                }
-                batch[(j % BATCH_SIZE) as usize] = collatz(&num);
-            }
-            for res in batch {
-                if res.steps == 0 {
-                    break;
-                } else {
-                    match tresult.send(res) {
+            let mut record = CollatzResult { steps: 0, seed: 0 };
+            for num in ((min + i)..=max).step_by(NUM_THREADS as usize) {
+                let r = collatz(&num);
+                if r.steps > record.steps {
+                    record = r;
+                    match tresult.send(record) {
                         Ok(()) => (),
                         Err(e) => {
                             eprintln!("{e}");
@@ -93,10 +78,11 @@ fn main() {
                     };
                 }
             }
+            drop(tresult);
         });
     }
-    for _ in min..=max {
-        let current = rresult.recv().unwrap();
+    drop(tresult);
+    while let Ok(current) = rresult.recv() {
         if current.steps > record.steps {
             println!(
                 "A new record! {} broke the record for most steps with {} steps!",

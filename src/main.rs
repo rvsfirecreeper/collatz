@@ -12,7 +12,7 @@ macro_rules! flush {
     };
 }
 const NUM_THREADS: u64 = 8;
-const BATCH_SIZE: u64 = 1024 * 1024;
+
 fn main() {
     print!(
         "The Collatz Conjecture: Records!!\n\

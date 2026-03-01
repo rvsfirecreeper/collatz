@@ -51,7 +51,7 @@ fn main() {
                 }
                 Err(e) => eprintln!(
                     "Not a number. Note: numbers above
-                    18,446,744,073,709,551,616
+                    18,446,744,073,709,551,615
                      are not supported. Error: {e}"
                 ),
             },

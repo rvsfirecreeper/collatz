@@ -11,13 +11,13 @@ macro_rules! flush {
         io::stdout().flush().unwrap();
     };
 }
-const NUM_THREADS: u64 = 8;
 
 fn main() {
     print!(
         "The Collatz Conjecture: Records!!\n\
         Only records will be printed.\n"
     );
+    let num_threads: u64 = thread::available_parallelism().unwrap().get() as u64;
     let stdin = io::stdin();
     let mut record = CollatzResult { seed: 0, steps: 0 };
     let mut input = String::new();
@@ -61,11 +61,11 @@ fn main() {
     println!("Starting Collatz Calculations...");
     let start = Instant::now();
     let (tresult, rresult) = mpsc::channel();
-    for i in 0..NUM_THREADS {
+    for i in 0..num_threads {
         let tresult = tresult.clone();
         thread::spawn(move || {
             let mut record = CollatzResult { steps: 0, seed: 0 };
-            for num in ((min + i)..=max).step_by(NUM_THREADS as usize) {
+            for num in ((min + i)..=max).step_by(num_threads as usize) {
                 let r = collatz(&num);
                 if r.steps > record.steps {
                     record = r;

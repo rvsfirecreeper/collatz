@@ -3,17 +3,21 @@ use collatz::CollatzResult;
 use collatz::collatz;
 use std::io;
 use std::io::Write;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Instant;
 macro_rules! flush {
     () => {
         io::stdout().flush().unwrap();
     };
 }
+
 fn main() {
     print!(
         "The Collatz Conjecture: Records!!\n\
         Only records will be printed.\n"
     );
+    let num_threads: u64 = thread::available_parallelism().unwrap().get() as u64;
     let stdin = io::stdin();
     let mut record = CollatzResult { seed: 0, steps: 0 };
     let mut input = String::new();
@@ -47,7 +51,7 @@ fn main() {
                 }
                 Err(e) => eprintln!(
                     "Not a number. Note: numbers above
-                    18,446,744,073,709,551,616
+                    18,446,744,073,709,551,615
                      are not supported. Error: {e}"
                 ),
             },
@@ -56,8 +60,29 @@ fn main() {
     };
     println!("Starting Collatz Calculations...");
     let start = Instant::now();
-    for i in min..=max {
-        let current = collatz(&i);
+    let (tresult, rresult) = mpsc::channel();
+    for i in 0..num_threads {
+        let tresult = tresult.clone();
+        thread::spawn(move || {
+            let mut record = CollatzResult { steps: 0, seed: 0 };
+            for num in ((min + i)..=max).step_by(num_threads as usize) {
+                let r = collatz(&num);
+                if r.steps > record.steps {
+                    record = r;
+                    match tresult.send(record) {
+                        Ok(()) => (),
+                        Err(e) => {
+                            eprintln!("{e}");
+                            panic!("Bad Send");
+                        }
+                    };
+                }
+            }
+            drop(tresult);
+        });
+    }
+    drop(tresult);
+    while let Ok(current) = rresult.recv() {
         if current.steps > record.steps {
             println!(
                 "A new record! {} broke the record for most steps with {} steps!",

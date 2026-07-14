@@ -25,7 +25,7 @@ fn main() {
     let rayonmode: bool = loop {
         input.clear();
         print!(
-            "Would you like to enable Rayon? This will be faster but only print the final record. (y/n)"
+            "Would you like to enable Rayon? This will be faster but only print the final record. (y/n) "
         );
         flush!();
         match stdin.read_line(&mut input) {

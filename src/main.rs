@@ -1,6 +1,7 @@
 mod collatz;
 use collatz::CollatzResult;
 use collatz::collatz;
+use rayon::prelude::*;
 use std::io;
 use std::io::Write;
 use std::sync::mpsc;
@@ -21,6 +22,23 @@ fn main() {
     let stdin = io::stdin();
     let mut record = CollatzResult { seed: 0, steps: 0 };
     let mut input = String::new();
+    let rayonmode: bool = loop {
+        input.clear();
+        print!(
+            "Would you like to enable Rayon? This will be faster but only print the final record. (y/n)"
+        );
+        flush!();
+        match stdin.read_line(&mut input) {
+            Ok(_) => match input.trim() {
+                "y" => break true,
+                "n" => break false,
+                _ => {
+                    eprintln!("Must be y/n only, not yes or no or anything else.");
+                }
+            },
+            Err(e) => eprintln!("Something went wrong! Error: {e}"),
+        }
+    };
     let min = loop {
         input.clear();
         print!("What is the first number you would like to calculate? ");
@@ -60,35 +78,47 @@ fn main() {
     };
     println!("Starting Collatz Calculations...");
     let start = Instant::now();
-    let (tresult, rresult) = mpsc::channel();
-    for i in 0..num_threads {
-        let tresult = tresult.clone();
-        thread::spawn(move || {
-            let mut record = CollatzResult { steps: 0, seed: 0 };
-            for num in ((min + i)..=max).step_by(num_threads as usize) {
-                let r = collatz(&num);
-                if r.steps > record.steps {
-                    record = r;
-                    match tresult.send(record) {
-                        Ok(()) => (),
-                        Err(e) => {
-                            eprintln!("{e}");
-                            panic!("Bad Send");
-                        }
-                    };
+    if rayonmode {
+        let max = (min..=max)
+            .into_par_iter()
+            .map(collatz)
+            .max_by_key(|result| result.steps)
+            .unwrap();
+        println!(
+            "Wow! The highest was {} with a whopping {} steps!",
+            max.seed, max.steps
+        );
+    } else {
+        let (tresult, rresult) = mpsc::channel();
+        for i in 0..num_threads {
+            let tresult = tresult.clone();
+            thread::spawn(move || {
+                let mut record = CollatzResult { steps: 0, seed: 0 };
+                for num in ((min + i)..=max).step_by(num_threads as usize) {
+                    let r = collatz(num);
+                    if r.steps > record.steps {
+                        record = r;
+                        match tresult.send(record) {
+                            Ok(()) => (),
+                            Err(e) => {
+                                eprintln!("{e}");
+                                panic!("Bad Send");
+                            }
+                        };
+                    }
                 }
+                drop(tresult);
+            });
+        }
+        drop(tresult);
+        while let Ok(current) = rresult.recv() {
+            if current.steps > record.steps {
+                println!(
+                    "A new record! {} broke the record for most steps with {} steps!",
+                    current.seed, current.steps
+                );
+                record = current;
             }
-            drop(tresult);
-        });
-    }
-    drop(tresult);
-    while let Ok(current) = rresult.recv() {
-        if current.steps > record.steps {
-            println!(
-                "A new record! {} broke the record for most steps with {} steps!",
-                current.seed, current.steps
-            );
-            record = current;
         }
     }
     println!(

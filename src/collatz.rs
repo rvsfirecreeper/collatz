@@ -6,12 +6,14 @@ pub struct CollatzResult {
 pub fn collatz(seed: u64) -> CollatzResult {
     let mut current = seed;
     let mut steps: u64 = 0;
-    steps += current.trailing_zeros() as u64;
-    current >>= current.trailing_zeros();
+    let mut tz: u32 = current.trailing_zeros();
+    steps += tz as u64;
+    current >>= tz;
     while current != 1 {
         current = current * 3 + 1;
-        steps += (1 + current.trailing_zeros()) as u64;
-        current >>= current.trailing_zeros();
+        tz = current.trailing_zeros();
+        steps += (1 + tz) as u64;
+        current >>= tz;
     }
     CollatzResult { seed, steps }
 }

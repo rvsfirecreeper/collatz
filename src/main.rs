@@ -1,9 +1,11 @@
+#![warn(clippy::pedantic)]
 mod collatz;
 use collatz::CollatzResult;
 use collatz::collatz;
 use rayon::prelude::*;
 use std::io;
 use std::io::Write;
+use std::io::stdin;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
@@ -12,17 +14,15 @@ macro_rules! flush {
         io::stdout().flush().unwrap();
     };
 }
-
-fn main() {
-    print!(
-        "The Collatz Conjecture: Records!!\n\
-        Only records will be printed.\n"
-    );
-    let num_threads: u64 = thread::available_parallelism().unwrap().get() as u64;
-    let stdin = io::stdin();
-    let mut record = CollatzResult { seed: 0, steps: 0 };
+struct Inputs {
+    min: u64,
+    max: u64,
+    rayon: bool,
+}
+fn get_inputs() -> Inputs {
     let mut input = String::new();
-    let rayonmode: bool = loop {
+    let stdin = stdin();
+    let rayon: bool = loop {
         input.clear();
         print!(
             "Would you like to enable Rayon? This will be faster but only print the final record. (y/n) "
@@ -62,7 +62,7 @@ fn main() {
             Ok(_) => match input.trim().parse::<u64>() {
                 Ok(n) => {
                     if n < min {
-                        eprintln!("Must be more or equal to first number")
+                        eprintln!("Must be more or equal to first number");
                     } else {
                         break n;
                     }
@@ -76,10 +76,21 @@ fn main() {
             Err(e) => eprintln!("Something went wrong! Error: {e}"),
         }
     };
+    Inputs { min, max, rayon }
+}
+fn main() {
+    print!(
+        "The Collatz Conjecture: Records!!\n\
+        Only records will be printed.\n"
+    );
+    let num_threads: u64 = thread::available_parallelism().unwrap().get() as u64;
+    let mut record = CollatzResult { seed: 0, steps: 0 };
+    let inputs = get_inputs();
+
     println!("Starting Collatz Calculations...");
     let start = Instant::now();
-    if rayonmode {
-        let max = (min..=max)
+    if inputs.rayon {
+        let max = (inputs.min..=inputs.max)
             .into_par_iter()
             .map(collatz)
             .max_by_key(|result| result.steps)
@@ -94,7 +105,8 @@ fn main() {
             let tresult = tresult.clone();
             thread::spawn(move || {
                 let mut record = CollatzResult { steps: 0, seed: 0 };
-                for num in ((min + i)..=max).step_by(num_threads as usize) {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+                for num in ((inputs.min + i)..=inputs.max).step_by(num_threads as usize) {
                     let r = collatz(num);
                     if r.steps > record.steps {
                         record = r;
@@ -104,7 +116,7 @@ fn main() {
                                 eprintln!("{e}");
                                 panic!("Bad Send");
                             }
-                        };
+                        }
                     }
                 }
                 drop(tresult);

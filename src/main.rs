@@ -25,7 +25,7 @@ fn get_inputs() -> Inputs {
     let rayon: bool = loop {
         input.clear();
         print!(
-            "Would you like to enable Rayon? This will be faster but only print the final record. (y/n) "
+            "Would you like to enable ULTRA TURBO FAST MODE? This will be 10% faster but only print the final record, no intermediates. (y/n) "
         );
         flush!();
         match stdin.read_line(&mut input) {

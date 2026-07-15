@@ -14,8 +14,6 @@ pub fn collatz(seed: u64) -> CollatzResult {
         tz = current.trailing_zeros();
         steps += (1 + tz) as u64;
         current >>= tz;
-        steps += (1 + current.trailing_zeros()) as u64;
-        current >>= current.trailing_zeros();
     }
     CollatzResult { seed, steps }
 }
